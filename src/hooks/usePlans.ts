@@ -4,7 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "@/lib/api";
 import type { Plan } from "@/types/plan";
 
-const MENU_PLANS_PATH = "menu/plans";
+interface MenuListTemplatesData {
+  recipes?: unknown[];
+  templates?: Plan[];
+}
+
+const MENU_LIST_TEMPLATES_PATH = "menu/list?type=templates";
 
 export interface UsePlansResult {
   plans: Plan[];
@@ -24,8 +29,11 @@ export function usePlans(): UsePlansResult {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<Plan[]>(MENU_PLANS_PATH);
-      setPlans(Array.isArray(res.data) ? res.data : []);
+      const res = await apiClient.get<MenuListTemplatesData>(
+        MENU_LIST_TEMPLATES_PATH,
+      );
+      const templates = res.data?.templates;
+      setPlans(Array.isArray(templates) ? templates : []);
     } catch {
       setError("Could not load plans.");
       setPlans([]);

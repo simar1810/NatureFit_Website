@@ -3,7 +3,7 @@
 import { useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/SiteShell";
-import { calculatePrice } from "@/lib/cartUtils";
+import { getCartSubtotal } from "@/lib/cartUtils";
 import type { ProteinKey, MealTypeKey } from "@/types/cart";
 import type { ProgramOption } from "@/types/cart";
 import {
@@ -41,6 +41,11 @@ export default function CartPage() {
     [plans],
   );
 
+  const selectedPlan = useMemo(
+    () => plans.find((p) => p._id === programId) ?? null,
+    [plans, programId],
+  );
+
   useEffect(() => {
     if (plansLoading || programOptions.length === 0) return;
     const currentValid = programOptions.some((p) => p.id === programId);
@@ -51,14 +56,8 @@ export default function CartPage() {
   }, [plansLoading, programId, programOptions, setCartState, showCartToast]);
 
   const totalPrice = useMemo(
-    () =>
-      calculatePrice({
-        calories: selectedCalories.calories,
-        mealsPerDay: mealsPerDayCount,
-        daysPerWeek: daysPerWeek.days,
-        weeks: weekCount.weeks,
-      }),
-    [selectedCalories, mealsPerDayCount, daysPerWeek, weekCount],
+    () => getCartSubtotal(selectedPlan, cartState),
+    [selectedPlan, cartState],
   );
 
   const updateCart = <K extends keyof typeof cartState>(

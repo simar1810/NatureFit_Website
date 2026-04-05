@@ -27,10 +27,59 @@ export function calculatePrice(params: {
   return perMeal * totalMeals;
 }
 
+function getTotalDeliveryDays(state: CartState): number {
+  return state.daysPerWeek.days * state.weekCount.weeks;
+}
+
+
+export function resolveMealTierPrice(
+  mealPricing: Record<string, number> | undefined,
+  state: CartState
+): number | null {
+  if (!mealPricing || typeof mealPricing !== "object") return null;
+
+  const totalDays = getTotalDeliveryDays(state);
+  if (totalDays <= 0) return null;
+
+  const weeks = state.weekCount.weeks;
+
+  const numericKeys = Object.keys(mealPricing)
+    .filter((k) => /^\d+$/.test(k))
+    .map((k) => parseInt(k, 10))
+    .sort((a, b) => a - b);
+
+  if (numericKeys.length > 0) {
+    const exact = mealPricing[String(totalDays)];
+    if (typeof exact === "number" && exact > 0) return exact;
+
+    const ceil = numericKeys.find((n) => n >= totalDays);
+    if (ceil !== undefined) {
+      const p = mealPricing[String(ceil)];
+      if (typeof p === "number" && p > 0) return p;
+    }
+
+    const maxK = numericKeys[numericKeys.length - 1];
+    const pMax = mealPricing[String(maxK)];
+    if (typeof pMax === "number" && pMax > 0) return pMax;
+  }
+
+  const durationKey = weeks === 1 ? "1 week" : `${weeks} weeks`;
+  const legacy =
+    mealPricing[durationKey] ??
+    mealPricing["1 week"] ??
+    mealPricing[String(weeks)];
+
+  if (typeof legacy === "number" && legacy > 0) return legacy;
+
+  return null;
+}
+
 /**
  * Compute subtotal from plan.pricing when available.
- * Expects pricing: { [mealType]: { [duration]: priceAed } }, e.g. breakfast["1 week"] = 100.
- * Returns null if pricing is missing or not applicable.
+ * Sums tier prices per selected meal (breakfast/lunch/dinner/snack). Uses numeric day tiers
+ * from the API or legacy week keys. Meal slots without API pricing use an even share of the
+ * client fallback total so snack-only gaps still work.
+ * Returns null if the plan has no usable API prices (caller uses calculatePrice for the whole cart).
  */
 export function computeSubTotalFromPlanPricing(
   plan: Plan | null | undefined,
@@ -40,24 +89,45 @@ export function computeSubTotalFromPlanPricing(
   if (!pricing || typeof pricing !== "object") return null;
 
   const mealsPerDayCount = state.selectedMeals.length || 1;
-  const weeks = state.weekCount.weeks;
-  const durationKey =
-    weeks === 1 ? "1 week" : `${weeks} weeks`;
+  const fallbackTotal = calculatePrice({
+    calories: state.selectedCalories.calories,
+    mealsPerDay: mealsPerDayCount,
+    daysPerWeek: state.daysPerWeek.days,
+    weeks: state.weekCount.weeks,
+  });
+  const fallbackPerMealType = fallbackTotal / mealsPerDayCount;
 
+  let anyApiPrice = false;
   let total = 0;
+
   for (const mealKey of state.selectedMeals) {
-    const mealPricing = pricing[mealKey];
-    if (mealPricing && typeof mealPricing === "object") {
-      const price =
-        (mealPricing as Record<string, number>)[durationKey] ??
-        (mealPricing as Record<string, number>)[String(weeks)];
-      if (typeof price === "number" && price > 0) {
-        total += price;
-      }
+    const mealPricing = pricing[mealKey] as Record<string, number> | undefined;
+    const resolved = resolveMealTierPrice(mealPricing, state);
+    if (resolved != null && resolved > 0) {
+      total += resolved;
+      anyApiPrice = true;
+    } else {
+      total += fallbackPerMealType;
     }
   }
-  if (total <= 0) return null;
+
+  if (!anyApiPrice) return null;
   return total;
+}
+
+/** Subtotal for cart/checkout display: API plan pricing when available, else calorie-based estimate. */
+export function getCartSubtotal(
+  plan: Plan | null | undefined,
+  state: CartState
+): number {
+  const fromPlan = computeSubTotalFromPlanPricing(plan, state);
+  if (fromPlan != null) return fromPlan;
+  return calculatePrice({
+    calories: state.selectedCalories.calories,
+    mealsPerDay: state.selectedMeals.length || 1,
+    daysPerWeek: state.daysPerWeek.days,
+    weeks: state.weekCount.weeks,
+  });
 }
 
 /**

@@ -16,7 +16,7 @@ All paths are relative to `/api/v1`. Base URL: `NEXT_PUBLIC_API_BASE_URL`.
 | `auth/otp` | PUT | Registration, Checkout | Verify phone OTP (sign in or register) |
 | `auth/email` | PUT | Registration, Checkout | Verify email OTP (sign in or register) |
 | `auth/register` | POST | Registration | Complete registration (name, email, etc.) with `registrationToken` |
-| `menu/plans` | GET | usePlans (Cart, Program, Checkout) | List programs/plans for selector |
+| `menu/list?type=templates` | GET | usePlans (Cart, Checkout) | List meal plan templates (`data.templates`) for program selector |
 | `menu/list` | GET | useMenuList (Program page) | Menu list (templates/recipes) for selected plan |
 | `checkout/session` | POST | Checkout | Create Stripe Checkout Session; body: `templateId`, `amount`, `currency`, `productName`, `successUrl`, `cancelUrl`, optional `userId`, `tenantId`. Response: `data.url`, `data.orderId`. |
 | `checkout/session/:sessionId` | GET | CheckoutSuccess | Get session details after payment (status, orderId) |
@@ -47,5 +47,5 @@ All paths are relative to `/api/v1`. Base URL: `NEXT_PUBLIC_API_BASE_URL`.
 ## Summary
 
 - **Auth:** Tenant, refresh, profile, OTP, verify, register – all integrated. Register body: do not send `phone`/`countryCode`. Forgot password offcanvas removed; no logout endpoint. See **`BACKEND_REPLY.md`** for backend reply and actions taken.
-- **Plans & menu:** `menu/plans` and `menu/list` integrated. Delivery slots, start dates, pricing remain client-side/hardcoded.
+- **Plans & menu:** `menu/list?type=templates` (plans list) and `menu/list` (useMenuList) integrated. Delivery slots, start dates, pricing remain client-side/hardcoded.
 - **Checkout:** Create session and get session by ID integrated. Promo input hidden; referral state removed; footer community form removed.
