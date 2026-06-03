@@ -9,7 +9,7 @@ import { getApiBaseUrl, getTenantId } from "./apiBase";
 
 export { getApiBaseUrl } from "./apiBase";
 
-const API_BASE_PATH = "/api/v1";
+const API_BASE_PATH = "";
 
 /** Backend success/error response envelope */
 export interface ApiResponse<T = unknown> {
